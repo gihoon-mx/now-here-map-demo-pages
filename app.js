@@ -438,7 +438,19 @@ function exportZones() {
     return {name:z.name,color:z.color,radiusKm:z.radiusKm,hexCenters:z.hexCenters,
       originalCenters:z.originalCenters,originalRadiusKm:z.originalRadiusKm};
   });
-  var json = JSON.stringify({version:1, zones:data, exportedAt:new Date().toISOString()}, null, 2);
+  var payload = {
+    version: 2,
+    zones: data,
+    settings: {
+      styleConfig: styleConfig,
+      hexStyleConfig: hexStyleConfig,
+      smoothEnabled: smoothEnabled,
+      smoothIntensity: smoothIntensity,
+      hexRadiusKm: hexRadiusKm
+    },
+    exportedAt: new Date().toISOString()
+  };
+  var json = JSON.stringify(payload, null, 2);
   var blob = new Blob([json], {type:'application/json'});
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
@@ -453,6 +465,54 @@ function importZones(file) {
       var data = JSON.parse(e.target.result);
       var zones = data.zones || data;
       if (!Array.isArray(zones)) { alert('올바른 JSON 형식이 아닙니다.'); return; }
+      
+      if (data.settings) {
+        var s = data.settings;
+        if(s.styleConfig) styleConfig = JSON.parse(JSON.stringify(s.styleConfig));
+        if(s.hexStyleConfig) hexStyleConfig = JSON.parse(JSON.stringify(s.hexStyleConfig));
+        if(s.smoothEnabled !== undefined) smoothEnabled = s.smoothEnabled;
+        if(s.smoothIntensity !== undefined) smoothIntensity = s.smoothIntensity;
+        if(s.hexRadiusKm !== undefined) hexRadiusKm = s.hexRadiusKm;
+        
+        document.getElementById('default-fill').value = styleConfig.default.fillColor;
+        document.getElementById('default-stroke').value = styleConfig.default.strokeColor;
+        document.getElementById('default-fill-opacity').value = styleConfig.default.fillOpacity;
+        if(document.getElementById('default-fill-opacity').nextElementSibling) document.getElementById('default-fill-opacity').nextElementSibling.textContent = Number(styleConfig.default.fillOpacity).toFixed(2);
+        document.getElementById('default-stroke-opacity').value = styleConfig.default.strokeOpacity;
+        if(document.getElementById('default-stroke-opacity').nextElementSibling) document.getElementById('default-stroke-opacity').nextElementSibling.textContent = Number(styleConfig.default.strokeOpacity).toFixed(2);
+        document.getElementById('default-stroke-weight').value = styleConfig.default.strokeWeight;
+        if(document.getElementById('default-stroke-weight').nextElementSibling) document.getElementById('default-stroke-weight').nextElementSibling.textContent = Number(styleConfig.default.strokeWeight).toFixed(1);
+
+        document.getElementById('highlight-fill').value = styleConfig.highlight.fillColor;
+        document.getElementById('highlight-stroke').value = styleConfig.highlight.strokeColor;
+        document.getElementById('highlight-fill-opacity').value = styleConfig.highlight.fillOpacity;
+        if(document.getElementById('highlight-fill-opacity').nextElementSibling) document.getElementById('highlight-fill-opacity').nextElementSibling.textContent = Number(styleConfig.highlight.fillOpacity).toFixed(2);
+        document.getElementById('highlight-stroke-opacity').value = styleConfig.highlight.strokeOpacity;
+        if(document.getElementById('highlight-stroke-opacity').nextElementSibling) document.getElementById('highlight-stroke-opacity').nextElementSibling.textContent = Number(styleConfig.highlight.strokeOpacity).toFixed(2);
+        document.getElementById('highlight-stroke-weight').value = styleConfig.highlight.strokeWeight;
+        if(document.getElementById('highlight-stroke-weight').nextElementSibling) document.getElementById('highlight-stroke-weight').nextElementSibling.textContent = Number(styleConfig.highlight.strokeWeight).toFixed(1);
+
+        document.getElementById('smooth-toggle').checked = smoothEnabled;
+        document.getElementById('smooth-intensity').value = smoothIntensity;
+        if(document.getElementById('smooth-intensity').nextElementSibling) document.getElementById('smooth-intensity').nextElementSibling.textContent = Number(smoothIntensity).toFixed(1);
+
+        document.getElementById('hex-radius').value = hexRadiusKm;
+        document.getElementById('hex-radius-label').textContent = Number(hexRadiusKm).toFixed(1)+'km';
+
+        document.getElementById('hex-fill').value = hexStyleConfig.default.fillColor;
+        document.getElementById('hex-stroke').value = hexStyleConfig.default.strokeColor;
+        document.getElementById('hex-fill-opacity').value = hexStyleConfig.default.fillOpacity;
+        if(document.getElementById('hex-fill-opacity').nextElementSibling) document.getElementById('hex-fill-opacity').nextElementSibling.textContent = Number(hexStyleConfig.default.fillOpacity).toFixed(2);
+        
+        document.getElementById('hex-sel-fill').value = hexStyleConfig.selected.fillColor;
+        document.getElementById('hex-sel-opacity').value = hexStyleConfig.selected.fillOpacity;
+        if(document.getElementById('hex-sel-opacity').nextElementSibling) document.getElementById('hex-sel-opacity').nextElementSibling.textContent = Number(hexStyleConfig.selected.fillOpacity).toFixed(2);
+
+        refreshMapStyles();
+        refreshHexStyles();
+        applyGeoJsonToMap();
+      }
+
       zones.forEach(function(d) {
         var zone = {id:'tz_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
           name:d.name, color:d.color, radiusKm:d.radiusKm||hexRadiusKm,
@@ -465,7 +525,7 @@ function importZones(file) {
       });
       if(currentMode==='trend') generateHexagons();
       renderZoneList(); saveZonesToStorage();
-      alert(zones.length+'개 트렌드 존을 불러왔습니다.');
+      alert(zones.length+'개 트렌드 존' + (data.settings ? ' 및 셋팅값을' : '을') + ' 불러왔습니다.');
     } catch(err) { alert('파일을 읽을 수 없습니다: '+err.message); }
   };
   reader.readAsText(file);
