@@ -46,6 +46,10 @@ var colorControls = [];         // 색상 트리거 재도색용 레지스트리
 var phoneMap = null;            // 폰 프레임 내 2번째 지도
 var phoneZoneOverlays = [];     // 폰 지도의 존 오버레이 [{polygons,label}]
 var phoneLocalLabel = null;     // 폰 지도의 로컬 선택 라벨
+var phoneViewportRect = null;   // 관리자 지도에 표시하는 폰 뷰포트 사각형
+var phoneCenterMarker = null;   // 폰 중심 마커
+var phoneViewportOn = true;     // 폰 표시영역 오버레이 온오프
+var dongIndex = null;           // 동 point-in-polygon 인덱스 [{name,bbox,polys}]
 function featKey(f){return f.getProperty('adm_cd')||f.getProperty('adm_nm')||null;}
 
 /* ========== 로컬 스타일 ========== */
@@ -101,7 +105,8 @@ function applyGeoJsonToMap() {
   map.data.forEach(function(f){map.data.remove(f);});
   map.data.addGeoJson(smoothEnabled ? smoothGeoJson(originalGeoJson,smoothIntensity) : originalGeoJson);
   refreshMapStyles();
-  applyGeoJsonToPhone(); phoneDataVisibility(); updatePhoneUI();
+  buildDongIndex();
+  applyGeoJsonToPhone(); phoneDataVisibility(); updatePhoneUI(); updatePhoneLocation(); updatePhoneViewportOverlay();
 }
 
 /* ========== 헥사곤 유틸 ========== */
@@ -293,10 +298,11 @@ function initPhoneMirror(){
   var sync=function(){if(!phoneMap)return;var c=map.getCenter();if(c)phoneMap.setCenter(c);phoneMap.setZoom(map.getZoom());};
   map.addListener('center_changed',sync);
   map.addListener('zoom_changed',sync);
-  map.addListener('idle',sync);
+  map.addListener('idle',function(){sync();updatePhoneLocation();updatePhoneViewportOverlay();});
+  phoneMap.addListener('idle',function(){updatePhoneViewportOverlay();});
   sync();
-  if(originalGeoJson)applyGeoJsonToPhone();
-  phoneDataVisibility();syncPhoneZones();updatePhoneUI();
+  if(originalGeoJson){buildDongIndex();applyGeoJsonToPhone();}
+  phoneDataVisibility();syncPhoneZones();updatePhoneUI();updatePhoneLocation();updatePhoneViewportOverlay();
 }
 function applyGeoJsonToPhone(){
   if(!phoneMap||!originalGeoJson)return;
@@ -327,10 +333,68 @@ function syncPhoneZones(){
   });
 }
 function refreshPhoneZoneLabels(){phoneZoneOverlays.forEach(function(o){if(o.label)o.label.updateStyle(zoneLabelStyle(o.color));});}
-function updatePhoneUI(){
-  var chip=document.getElementById('phone-mode-chip');
-  if(chip)chip.textContent=currentMode==='trend'?'⬡ 트렌드':'📍 로컬';
+
+/* ========== 동 위치 판별 (point-in-polygon) ========== */
+function buildDongIndex(){
+  if(!originalGeoJson)return;
+  dongIndex=originalGeoJson.features.map(function(f){
+    var g=f.geometry,polys=[];
+    if(g.type==='Polygon')polys=[g.coordinates];
+    else if(g.type==='MultiPolygon')polys=g.coordinates;
+    var minx=Infinity,miny=Infinity,maxx=-Infinity,maxy=-Infinity;
+    polys.forEach(function(poly){poly[0].forEach(function(pt){if(pt[0]<minx)minx=pt[0];if(pt[0]>maxx)maxx=pt[0];if(pt[1]<miny)miny=pt[1];if(pt[1]>maxy)maxy=pt[1];});});
+    var raw=(f.properties&&(f.properties.adm_nm||f.properties.name))||'';
+    var p=raw.split(' ');var shortName=p.length>2?p.slice(2).join(' '):raw;
+    return {name:shortName,bbox:[minx,miny,maxx,maxy],polys:polys};
+  });
 }
+function pointInRing(x,y,ring){
+  var inside=false;
+  for(var i=0,j=ring.length-1;i<ring.length;j=i++){
+    var xi=ring[i][0],yi=ring[i][1],xj=ring[j][0],yj=ring[j][1];
+    if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi))inside=!inside;
+  }
+  return inside;
+}
+function dongAt(lat,lng){
+  if(!dongIndex)return null;
+  for(var i=0;i<dongIndex.length;i++){
+    var d=dongIndex[i],b=d.bbox;
+    if(lng<b[0]||lng>b[2]||lat<b[1]||lat>b[3])continue;
+    for(var pI=0;pI<d.polys.length;pI++){
+      var poly=d.polys[pI];
+      if(pointInRing(lng,lat,poly[0])){
+        var inHole=false;
+        for(var h=1;h<poly.length;h++){if(pointInRing(lng,lat,poly[h])){inHole=true;break;}}
+        if(!inHole)return d.name;
+      }
+    }
+  }
+  return null;
+}
+function updatePhoneLocation(){
+  var el=document.getElementById('phone-loc');if(!el)return;
+  var nameEl=el.querySelector('.pa-loc-name')||el;
+  if(!map){nameEl.textContent='···';return;}
+  var c=map.getCenter();if(!c){nameEl.textContent='···';return;}
+  var name=dongAt(c.lat(),c.lng());
+  nameEl.textContent=name||'위치 확인 중';
+}
+
+/* ========== 관리자 지도: 폰 표시영역 오버레이 ========== */
+function phoneCollapsed(){var m=document.getElementById('phone-mirror');return m&&m.classList.contains('collapsed');}
+function clearPhoneViewportOverlay(){if(phoneViewportRect)phoneViewportRect.setMap(null);if(phoneCenterMarker)phoneCenterMarker.setMap(null);}
+function updatePhoneViewportOverlay(){
+  if(!map||!phoneMap)return;
+  if(!phoneViewportOn||phoneCollapsed()){clearPhoneViewportOverlay();return;}
+  var b=phoneMap.getBounds(),c=phoneMap.getCenter();
+  if(!b||!c)return;
+  if(!phoneViewportRect)phoneViewportRect=new google.maps.Rectangle({fillColor:'#6ec6ff',fillOpacity:0.06,strokeColor:'#6ec6ff',strokeOpacity:0.95,strokeWeight:2,clickable:false,zIndex:60});
+  phoneViewportRect.setOptions({bounds:b});phoneViewportRect.setMap(map);
+  if(!phoneCenterMarker)phoneCenterMarker=new google.maps.Marker({clickable:false,zIndex:61,icon:{path:google.maps.SymbolPath.CIRCLE,scale:5,fillColor:'#6ec6ff',fillOpacity:1,strokeColor:'#ffffff',strokeWeight:2}});
+  phoneCenterMarker.setPosition(c);phoneCenterMarker.setMap(map);
+}
+function updatePhoneUI(){ updatePhoneLocation(); }
 
 /* ========== 폰 컨트롤 (드래그/크기/접기/네비) ========== */
 var phoneWidth=244;
@@ -358,6 +422,7 @@ function initPhoneControls(){
     tg.setAttribute('aria-label',c?'모바일 미리보기 펼치기':'모바일 미리보기 접기');
     tg.setAttribute('title',c?'모바일 미리보기 펼치기':'모바일 미리보기 접기');
     if(!c){reclampPhone();phoneResizeMap();}
+    updatePhoneViewportOverlay();
   });
   // 크기 조절
   var bg=document.getElementById('phone-bigger'),sm=document.getElementById('phone-smaller');
@@ -876,6 +941,10 @@ function initSettingsPanel(){
     hexRadiusKm=parseFloat(this.value);document.getElementById('hex-radius-label').textContent=hexRadiusKm.toFixed(1)+'km';
     if(currentMode==='trend'){selectedHexes.clear();if(editingZoneId)cancelEditZone();rezoneAllToCurrentRadius();generateHexagons();updateZoneSaveUI();}
   });
+
+  // 폰 표시영역 오버레이 토글 (관리자)
+  var vpToggle=document.getElementById('phone-viewport-toggle');
+  if(vpToggle){vpToggle.checked=phoneViewportOn;vpToggle.addEventListener('change',function(){phoneViewportOn=this.checked;updatePhoneViewportOverlay();});}
 
   // 라벨 옵션
   document.getElementById('local-label-toggle').addEventListener('change',function(){localLabelConfig.enabled=this.checked;if(this.checked)showLocalLabel();else removeLocalLabel();});

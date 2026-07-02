@@ -8,7 +8,7 @@
   <meta http-equiv="Expires" content="0" />
   <meta name="description" content="대한민국 동 단위 행정구역 경계를 Google Maps 위에 인터랙티브하게 표시하는 데모 페이지" />
   <title>동 단위 행정구역 경계 뷰어 – Now Here</title>
-  <link rel="stylesheet" href="style.css?v=1.1.9" />
+  <link rel="stylesheet" href="style.css?v=1.1.10" />
 </head>
 <body>
 
@@ -25,7 +25,7 @@
     <div id="panel-header">
       <span id="app-title">Now Here</span>
       <div class="panel-header-right">
-        <span id="app-version">v1.1.9</span>
+        <span id="app-version">v1.1.10</span>
         <button id="panel-collapse" class="panel-collapse-btn" aria-label="패널 접기" title="패널 접기" aria-expanded="true"></button>
       </div>
     </div>
@@ -82,6 +82,10 @@
 
     <!-- 설정 패널 (좌측 내장) -->
     <div id="settings-section" style="display:none;">
+      <div class="settings-section">
+        <h4>폰 미리보기 (관리자)</h4>
+        <div class="setting-row"><label>표시영역</label><label class="toggle-switch"><input type="checkbox" id="phone-viewport-toggle" checked /><span class="toggle-slider"></span></label></div>
+      </div>
       <div id="local-settings">
         <div class="settings-section">
           <h4>비선택 구역</h4>
@@ -147,8 +151,7 @@
             <span class="ps-icons"><i class="ps-signal"></i><i class="ps-wifi"></i><i class="ps-batt"></i></span>
           </div>
           <div class="phone-appbar">
-            <span class="pa-title">Now Here</span>
-            <span class="pa-mode" id="phone-mode-chip">📍 로컬</span>
+            <span class="pa-loc" id="phone-loc"><svg class="pa-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10z"/><circle cx="12" cy="11" r="2"/></svg><span class="pa-loc-name">···</span></span>
           </div>
         </div>
         <div class="phone-navbar">
@@ -173,11 +176,10 @@
           <button class="pn-ai" type="button" data-nav="agent" title="AI Agent" aria-label="AI Agent">
             <svg viewBox="0 0 44 44" aria-hidden="true">
               <defs>
-                <radialGradient id="aiBlob" gradientUnits="userSpaceOnUse" cx="16" cy="13" r="34">
-                  <stop offset="0" stop-color="#a6dbff"/>
-                  <stop offset="0.5" stop-color="#5aa0ff"/>
-                  <stop offset="1" stop-color="#2f7bff"/>
-                </radialGradient>
+                <linearGradient id="aiBlob" gradientUnits="userSpaceOnUse" x1="7" y1="6" x2="37" y2="38">
+                  <stop offset="0" stop-color="#8ed0ff"/>
+                  <stop offset="1" stop-color="#a78bfa"/>
+                </linearGradient>
               </defs>
               <g fill="url(#aiBlob)">
                 <circle cx="22" cy="22" r="13.5"/>
@@ -200,7 +202,7 @@
     </div>
   </div>
 
-  <script src="config.js?v=1.1.9"></script>
-  <script src="app.js?v=1.1.9"></script>
+  <script src="config.js?v=1.1.10"></script>
+  <script src="app.js?v=1.1.10"></script>
 </body>
 </html>
