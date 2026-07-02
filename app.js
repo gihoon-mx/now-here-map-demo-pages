@@ -193,6 +193,7 @@ function isHexInNonEditingZone(cx, cy) {
 }
 
 function toggleHex(poly) {
+  if(currentRole && currentRole!=='admin') return; // 데모유저는 존 편집 불가
   var id = poly.hexId;
   if (selectedHexes.has(id)) {
     selectedHexes.delete(id);
@@ -290,8 +291,9 @@ function refreshZoneLabels(){trendZones.forEach(function(z){if(z.label)z.label.u
 /* ========== 폰 미러 (모바일 미리보기) ========== */
 function initPhoneMirror(){
   var el=document.getElementById('phone-map');if(!el||typeof google==='undefined')return;
+  var isMobile=window.matchMedia('(max-width:768px)').matches;
   var opts={center:{lat:CONFIG.MAP_CENTER_LAT,lng:CONFIG.MAP_CENTER_LNG},zoom:CONFIG.MAP_ZOOM,
-    disableDefaultUI:true,gestureHandling:'none',keyboardShortcuts:false,clickableIcons:false};
+    disableDefaultUI:true,gestureHandling:isMobile?'greedy':'none',keyboardShortcuts:false,clickableIcons:false};
   if(CONFIG.MAP_ID&&CONFIG.MAP_ID.length>0)opts.mapId=CONFIG.MAP_ID;else opts.styles=mapStyles();
   phoneMap=new google.maps.Map(el,opts);
   // 카메라 단방향 미러 (PC → 폰)
@@ -979,6 +981,33 @@ function initPanelCollapse(){
   });
 }
 
+/* ========== 사이드바 폭 조절 (→ 폰 크기, 비율은 cqw로 유지) ========== */
+function resizeMaps(){
+  if(typeof google==='undefined')return;
+  if(map)google.maps.event.trigger(map,'resize');
+  if(phoneMap){google.maps.event.trigger(phoneMap,'resize');var c=map&&map.getCenter();if(c){phoneMap.setCenter(c);phoneMap.setZoom(map.getZoom());}}
+  updatePhoneViewportOverlay();
+}
+function initSidebarResize(){
+  var sb=document.getElementById('sidebar'),rz=document.getElementById('sidebar-resizer');
+  if(!sb||!rz)return;
+  function maxW(){return Math.min(720,Math.round(window.innerWidth*0.72));}
+  function applyW(w){w=Math.max(300,Math.min(w,maxW()));sb.style.flexBasis=w+'px';sb.style.width=w+'px';try{localStorage.setItem('nowhere_sidebarW',String(w));}catch(e){}return w;}
+  var saved=NaN;try{saved=parseInt(localStorage.getItem('nowhere_sidebarW'),10);}catch(e){}
+  if(!isNaN(saved))applyW(saved);
+  var dragging=false;
+  function pt(e){return e.touches&&e.touches[0]?e.touches[0]:e;}
+  function move(e){if(!dragging)return;var p=pt(e);applyW(window.innerWidth-p.clientX);if(e.cancelable)e.preventDefault();}
+  function up(){if(!dragging)return;dragging=false;document.body.classList.remove('resizing-sb');
+    document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',up);
+    document.removeEventListener('touchmove',move);document.removeEventListener('touchend',up);resizeMaps();}
+  function down(e){dragging=true;document.body.classList.add('resizing-sb');if(e.cancelable)e.preventDefault();
+    document.addEventListener('mousemove',move);document.addEventListener('mouseup',up);
+    document.addEventListener('touchmove',move,{passive:false});document.addEventListener('touchend',up);}
+  rz.addEventListener('mousedown',down);rz.addEventListener('touchstart',down,{passive:false});
+  window.addEventListener('resize',function(){if(sb.style.width)applyW(parseInt(sb.style.width,10)||380);});
+}
+
 function fitBoundsToData(){var b=new google.maps.LatLngBounds();map.data.forEach(function(f){var g=f.getGeometry();if(g)g.forEachLatLng(function(ll){b.extend(ll);});});if(!b.isEmpty())map.fitBounds(b,60);}
 
 function updateInfoPanel(content){
@@ -1017,7 +1046,7 @@ function hideAuthOverlay(){var ov=document.getElementById('auth-overlay');if(ov)
 function showUserChip(user,role){
   var row=document.getElementById('account-row');if(!row)return;
   row.style.display='';
-  document.getElementById('account-email').textContent=(user.email||'')+(role==='admin'?' · 관리자':'');
+  document.getElementById('account-email').textContent=(user.email||'')+(role==='admin'?' · 관리자':' · 뷰어');
   document.getElementById('allowlist-btn').style.display=(role==='admin')?'':'none';
 }
 
@@ -1039,7 +1068,7 @@ function initAuth(){
 }
 function handleAuth(user){
   currentUser=user;
-  if(!user){currentRole=null;var row=document.getElementById('account-row');if(row)row.style.display='none';showAuthOverlay('signedout');return;}
+  if(!user){currentRole=null;document.body.classList.remove('role-admin','role-user');var row=document.getElementById('account-row');if(row)row.style.display='none';showAuthOverlay('signedout');return;}
   showAuthOverlay('checking');
   var email=(user.email||'').toLowerCase();
   if(email===adminEmail()){grantAccess(user,'admin');return;}
@@ -1050,8 +1079,10 @@ function handleAuth(user){
 }
 function grantAccess(user,role){
   currentRole=role;
-  if(role==='admin'){hideAuthOverlay();showUserChip(user,'admin');bootMap();loadCloudData(user.uid);}
-  else{showAuthOverlay('demo',user);} // 데모 모드(추후 정의) 플레이스홀더
+  document.body.classList.remove('role-admin','role-user');
+  document.body.classList.add(role==='admin'?'role-admin':'role-user');
+  hideAuthOverlay();showUserChip(user,role);bootMap();
+  if(role==='admin')loadCloudData(user.uid); // 데모유저는 뷰잉 전용 (클라우드 로드/저장 없음)
 }
 
 function loadCloudData(uid){
@@ -1126,6 +1157,7 @@ function addAllowlistEntry(){
 (function(){
   initPanelCollapse();
   initPhoneControls();
+  initSidebarResize();
   if(typeof CONFIG==='undefined'||!CONFIG.GOOGLE_MAPS_API_KEY){var it=document.getElementById('info-text');if(it)it.textContent='⚠️ config.js에 API 키를 설정해 주세요.';hideMapLoading();hideAuthOverlay();return;}
   initAuth();
 })();

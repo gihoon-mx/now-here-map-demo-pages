@@ -9,6 +9,11 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Inter','Pretendard
 #sidebar::-webkit-scrollbar{width:8px;}
 #sidebar::-webkit-scrollbar-track{background:transparent;}
 #sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:4px;}
+/* 사이드바 폭 조절 핸들 (map ↔ sidebar 사이) */
+#sidebar-resizer{flex:0 0 7px;align-self:stretch;position:relative;z-index:12;cursor:ew-resize;background:transparent;touch-action:none;}
+#sidebar-resizer::before{content:'';position:absolute;inset:0;margin:auto;width:3px;height:46px;border-radius:3px;background:rgba(255,255,255,0.14);transition:background .18s ease,height .18s ease;}
+#sidebar-resizer:hover::before,body.resizing-sb #sidebar-resizer::before{background:rgba(142,208,255,0.65);height:84px;}
+body.resizing-sb{cursor:ew-resize;user-select:none;}
 
 /* 키보드 포커스 표시 (접근성) */
 :focus-visible{outline:2px solid rgba(110,198,255,0.7);outline-offset:1px;border-radius:4px;}
@@ -265,69 +270,71 @@ button:focus:not(:focus-visible){outline:none;}
 .al-item .al-del:hover{opacity:1;}
 .al-empty{font-size:.74rem;color:#6b7280;text-align:center;padding:14px;}
 
-/* ========== 모바일 미러 (Galaxy S25 Ultra) ========== */
+/* ========== 폰 미러 (사이드바 도킹 · 폭 기준 cqw 비율) ========== */
 #phone-mirror{position:relative;order:-1;width:100%;display:flex;flex-direction:column;align-items:stretch;}
-
-/* 상단 컨트롤 레일 (드래그/크기/접기) — 글래스모피즘 */
-.phone-rail{display:flex;flex-direction:row;align-items:center;gap:6px;padding:5px 7px;border-radius:15px;
-  background:rgba(18,20,28,0.55);backdrop-filter:blur(20px) saturate(1.7);-webkit-backdrop-filter:blur(20px) saturate(1.7);
-  border:1px solid rgba(255,255,255,0.12);box-shadow:0 8px 24px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.08);}
-.phone-rail-btn{width:28px;height:28px;display:flex;align-items:center;justify-content:center;padding:0;
-  border:1px solid rgba(255,255,255,0.1);border-radius:9px;background:rgba(255,255,255,0.06);
-  color:#c7cbd1;font-family:inherit;font-size:.95rem;font-weight:600;line-height:1;cursor:pointer;transition:all .18s ease;}
-.phone-rail-btn:hover{background:rgba(255,255,255,0.1);color:#e0ecff;}
-.phone-rail-btn:active{transform:scale(.9);}
-.phone-drag{cursor:grab;font-size:.82rem;letter-spacing:-1px;}
-#phone-mirror.dragging .phone-drag{cursor:grabbing;}
-.phone-toggle::before{content:'×';font-size:1.15rem;}
-#phone-mirror.collapsed .phone-toggle::before{content:'📱';font-size:.9rem;}
-
-/* 폰 본체 (얇은 베젤) */
-.phone-frame{position:relative;padding:4px;border-radius:38px;flex-shrink:0;
-  background:linear-gradient(155deg,#3a3b45,#141419);
-  box-shadow:0 22px 60px rgba(0,0,0,0.6),inset 0 0 0 1px rgba(255,255,255,0.09),inset 0 0 0 2.5px #0a0a0e;}
-#phone-mirror.collapsed .phone-frame{display:none;}
 .phone-screen{position:relative;width:100%;flex-shrink:0;aspect-ratio:9/19.5;border-radius:28px;overflow:hidden;background:#0b0b10;
-  border:1px solid rgba(255,255,255,0.08);box-shadow:0 10px 30px rgba(0,0,0,0.45);}
+  border:1px solid rgba(255,255,255,0.08);box-shadow:0 10px 30px rgba(0,0,0,0.45);
+  container-type:inline-size;}  /* 폰 폭 기준 컨테이너 → 내부 UI cqw로 비율 유지 */
 .phone-notch{display:none;}
 .phone-map{position:absolute;inset:0;z-index:0;background:#0b0b10;}
 
-.phone-topscrim{position:absolute;top:0;left:0;right:0;z-index:2;padding:6px 14px 14px;pointer-events:none;
+/* 상단 상태바 / 앱바 (cqw = 폰 폭의 1%) */
+.phone-topscrim{position:absolute;top:0;left:0;right:0;z-index:2;padding:1.8cqw 4cqw 4cqw;pointer-events:none;
   background:linear-gradient(to bottom,rgba(0,0,0,0.5),rgba(0,0,0,0));}
-.phone-statusbar{display:flex;align-items:center;justify-content:space-between;height:20px;color:#fff;font-size:.62rem;font-weight:600;letter-spacing:.02em;text-shadow:0 1px 2px rgba(0,0,0,0.5);}
-.ps-icons{display:flex;align-items:center;gap:4px;}
+.phone-statusbar{display:flex;align-items:center;justify-content:space-between;height:5.6cqw;color:#fff;font-size:2.9cqw;font-weight:600;letter-spacing:.02em;text-shadow:0 1px 2px rgba(0,0,0,0.5);}
+.ps-icons{display:flex;align-items:center;gap:1.2cqw;}
 .ps-signal,.ps-wifi,.ps-batt{display:inline-block;background:#fff;border-radius:1px;}
-.ps-signal{width:11px;height:8px;clip-path:polygon(0 100%,20% 100%,20% 60%,45% 60%,45% 35%,70% 35%,70% 12%,100% 12%,100% 100%);}
-.ps-wifi{width:10px;height:8px;clip-path:polygon(50% 0,100% 42%,82% 60%,50% 30%,18% 60%,0 42%);}
-.ps-batt{width:15px;height:8px;border-radius:2px;position:relative;}
-.phone-appbar{display:flex;align-items:center;justify-content:center;margin-top:6px;pointer-events:none;}
-.pa-loc{display:inline-flex;align-items:center;gap:4px;max-width:80%;font-size:.78rem;font-weight:700;color:#fff;
-  padding:3px 12px 3px 9px;border-radius:20px;
+.ps-signal{width:3.2cqw;height:2.4cqw;clip-path:polygon(0 100%,20% 100%,20% 60%,45% 60%,45% 35%,70% 35%,70% 12%,100% 12%,100% 100%);}
+.ps-wifi{width:3cqw;height:2.4cqw;clip-path:polygon(50% 0,100% 42%,82% 60%,50% 30%,18% 60%,0 42%);}
+.ps-batt{width:4.4cqw;height:2.4cqw;border-radius:1px;}
+.phone-appbar{display:flex;align-items:center;justify-content:center;margin-top:1.8cqw;pointer-events:none;}
+.pa-loc{display:inline-flex;align-items:center;gap:1.2cqw;max-width:82%;font-size:3.6cqw;font-weight:700;color:#fff;
+  padding:0.9cqw 3.4cqw 0.9cqw 2.6cqw;border-radius:6cqw;
   background:rgba(20,22,30,0.5);backdrop-filter:blur(12px) saturate(1.6);-webkit-backdrop-filter:blur(12px) saturate(1.6);
   border:1px solid rgba(255,255,255,0.16);box-shadow:inset 0 1px 0 rgba(255,255,255,0.1),0 2px 8px rgba(0,0,0,0.25);}
-.pa-pin{width:13px;height:13px;flex-shrink:0;color:#8ed0ff;}
+.pa-pin{width:3.8cqw;height:3.8cqw;flex-shrink:0;color:#8ed0ff;}
 .pa-loc-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
-/* 하단 네비: 알약형(활성=라벨 확장) + AI Agent 별도 원형 */
-.phone-navbar{position:absolute;left:0;right:0;bottom:0;z-index:4;display:flex;align-items:center;gap:8px;padding:0 8px 12px;}
-.pn-group{flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;height:46px;padding:0 4px;border-radius:23px;
-  background:rgba(18,20,28,0.5);backdrop-filter:blur(22px) saturate(1.7);-webkit-backdrop-filter:blur(22px) saturate(1.7);
-  border:1px solid rgba(255,255,255,0.13);box-shadow:0 8px 24px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.09);}
-.pn-item{flex-shrink:0;display:flex;align-items:center;justify-content:center;height:36px;padding:0 8px;border:none;background:transparent;color:#c1c6d0;cursor:pointer;border-radius:18px;overflow:hidden;transition:background .25s ease,color .25s ease,padding .25s cubic-bezier(.22,1,.36,1);}
-.pn-item .pn-ic{width:18px;height:18px;display:flex;flex-shrink:0;}
+/* 하단 네비: 알약 그룹(활성=라벨 확장) + AI 원형 */
+.phone-navbar{position:absolute;left:0;right:0;bottom:0;z-index:4;display:flex;align-items:center;gap:2.4cqw;padding:0 3cqw 3.6cqw;}
+.pn-group{flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;height:13.4cqw;padding:0 1.6cqw;border-radius:7cqw;
+  background:rgba(18,20,28,0.55);backdrop-filter:blur(22px) saturate(1.7);-webkit-backdrop-filter:blur(22px) saturate(1.7);
+  border:1px solid rgba(255,255,255,0.13);box-shadow:0 2cqw 6cqw rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.09);}
+.pn-item{flex:0 0 auto;display:flex;align-items:center;justify-content:center;height:10cqw;padding:0 2.3cqw;border:none;background:transparent;color:#c1c6d0;cursor:pointer;border-radius:5cqw;overflow:hidden;transition:background .25s ease,color .25s ease,padding .28s cubic-bezier(.22,1,.36,1);}
+.pn-item .pn-ic{width:5.4cqw;height:5.4cqw;display:flex;flex-shrink:0;}
 .pn-item .pn-ic svg{width:100%;height:100%;}
-.pn-lb{max-width:0;overflow:hidden;white-space:nowrap;font-size:.66rem;font-weight:700;opacity:0;transition:max-width .25s ease,opacity .2s ease,margin .25s ease;}
-.pn-item.active{background:rgba(255,255,255,0.22);color:#fff;padding:0 11px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.15);}
-.pn-item.active .pn-lb{max-width:64px;opacity:1;margin-left:5px;}
-.pn-ai{width:46px;height:46px;flex-shrink:0;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;filter:drop-shadow(0 2px 5px rgba(0,0,0,0.28));transition:transform .2s cubic-bezier(.22,1,.36,1);}
-.pn-ai svg{width:46px;height:46px;display:block;}
+.pn-lb{max-width:0;overflow:hidden;white-space:nowrap;font-size:3cqw;font-weight:700;opacity:0;transition:max-width .28s cubic-bezier(.22,1,.36,1),opacity .2s ease,margin .28s ease;}
+.pn-item.active{background:rgba(255,255,255,0.2);color:#fff;padding:0 3cqw;box-shadow:inset 0 1px 0 rgba(255,255,255,0.15);}
+.pn-item.active .pn-lb{max-width:22cqw;opacity:1;margin-left:1.4cqw;}
+.pn-ai{width:13.4cqw;height:13.4cqw;flex-shrink:0;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.3));transition:transform .2s cubic-bezier(.22,1,.36,1);}
+.pn-ai svg{width:100%;height:100%;display:block;}
 .pn-ai:hover{transform:translateY(-2px) scale(1.06) rotate(-3deg);}
 .pn-ai:active{transform:scale(.92);}
 
-@media (max-width:900px){
+/* 데모유저: 편집/설정 UI 숨김 (뷰잉 + 모드전환만) */
+body.role-user #settings-toggle-row,
+body.role-user #settings-section,
+body.role-user #zone-save-area,
+body.role-user #zone-edit-bar,
+body.role-user #zone-list-area,
+body.role-user #allowlist-btn{display:none!important;}
+
+/* 태블릿(769~900px): 세로 스택 */
+@media (max-width:900px) and (min-width:769px){
   #app-shell{flex-direction:column;}
-  #map{flex:none;height:50vh;}
-  #sidebar{flex:none;width:100%;height:auto;border-left:none;border-top:1px solid rgba(255,255,255,0.07);}
+  #map{flex:none;height:48vh;}
+  #sidebar-resizer{display:none;}
+  #sidebar{flex:none;width:100%!important;height:auto;border-left:none;border-top:1px solid rgba(255,255,255,0.07);}
+}
+
+/* 모바일(≤768px): 폰 화면만 전체표시 */
+@media (max-width:768px){
+  #sidebar-resizer{display:none;}
+  #app-shell{display:block;height:100%;}
+  #map,#left-panel,#map-loading{display:none!important;}
+  #sidebar{position:fixed;inset:0;width:100%!important;height:100%;padding:0;margin:0;gap:0;border:none;overflow:hidden;background:#000;}
+  #phone-mirror{height:100%;order:0;}
+  .phone-screen{width:100vw;height:100dvh;aspect-ratio:auto;border-radius:0;border:none;box-shadow:none;flex-shrink:1;}
 }
 
 /* ========== 모바일 / 반응형 ========== */
